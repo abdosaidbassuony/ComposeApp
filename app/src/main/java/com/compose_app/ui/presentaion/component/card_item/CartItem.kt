@@ -16,43 +16,43 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun CardItem(
-				modifier: Modifier = Modifier,
-				imageUrl: String,
-				title: String,
-				price: Double? = null,
-				homeScreen: Boolean = false,
-				isAdded: Boolean = false,
-				onCartClick: () -> Unit = {},
-				onAddItemClicked: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    imageUrl: String,
+    title: String,
+    price: Double? = null,
+    homeScreen: Boolean = false,
+    isAdded: Boolean = false,
+    onCartClick: () -> Unit = {},
+    onAddItemClicked: () -> Unit = {},
 ) {
-				//	Cart item card
-				Card(
-								modifier = modifier,
-								elevation = 2.dp, onClick = onCartClick,
-				) {
-								Column(
-												modifier = Modifier.fillMaxWidth()
-								) {
-												// Item image
-												CardImage(imageUrl)
-												//	Add item icon
-												Row(
-																horizontalArrangement = Arrangement.SpaceBetween,
-																verticalAlignment = Alignment.CenterVertically,
-																modifier = Modifier
-																				.fillMaxWidth()
-																				.padding(8.dp),
-												) {
-																// Item name and price
-																ItemNameAndPrice(title, price)
-																//	Navigate to details icon
-																if (homeScreen) NavigateToDetailsIcon()
-												}
-								}
-								if (!homeScreen) Box(contentAlignment = Alignment.TopEnd) {
-												AddItemIcon(isAdded, onAddItemClicked)
-								}
-				}
+    //	Cart item card
+    Card(
+        modifier = modifier,
+        elevation = 2.dp, onClick = onCartClick,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Item image
+            CardImage(imageUrl)
+            //	Add item icon
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+            ) {
+                // Item name and price
+                ItemNameAndPrice(title, price)
+                //	Navigate to details icon
+                if (homeScreen) NavigateToDetailsIcon()
+            }
+        }
+        if (!homeScreen) Box(contentAlignment = Alignment.TopEnd) {
+            AddItemIcon(isAdded, onAddItemClicked)
+        }
+    }
 }
 
 

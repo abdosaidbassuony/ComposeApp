@@ -15,16 +15,16 @@ import com.example.compose_app.R
 
 @Composable
 fun AddItemIcon(isAdded: Boolean, onAddItemClicked: () -> Unit) {
-				IconButton(
-								onClick = onAddItemClicked,
-				) {
-								//	Add item icon with check mark if item is added
-								Icon(
-												modifier = Modifier.size(24.dp), imageVector = if (isAdded) {
-																Icons.Filled.CheckCircle
-												} else {
-																Icons.Filled.AddCircle
-												}, tint = Color.White, contentDescription = stringResource(R.string.remove_item)
-								)
-				}
+    IconButton(
+        onClick = onAddItemClicked,
+    ) {
+        //	Add item icon with check mark if item is added
+        Icon(
+            modifier = Modifier.size(24.dp), imageVector = if (isAdded) {
+                Icons.Filled.CheckCircle
+            } else {
+                Icons.Filled.AddCircle
+            }, tint = Color.White, contentDescription = stringResource(R.string.remove_item)
+        )
+    }
 }

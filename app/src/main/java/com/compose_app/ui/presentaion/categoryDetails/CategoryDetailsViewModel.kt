@@ -16,28 +16,28 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CategoryDetailsViewModel @Inject constructor(
-				savedStateHandle: SavedStateHandle,
-				private val getCategoryDetailsUseCase: GetCategoryDetailsUseCase,
+    savedStateHandle: SavedStateHandle,
+    private val getCategoryDetailsUseCase: GetCategoryDetailsUseCase,
 ) : ViewModel() {
-				private val categoryId = savedStateHandle.get<String>("categoryId")
-								?: throw IllegalArgumentException("Missing categoryId")
-				private val _categories = mutableStateOf<Results<List<Category>>>(Results.Loading)
-				val category: State<Results<List<Category>>> = _categories
-				private val _event = Channel<Event>()
-				val event = _event.receiveAsFlow()
-				fun onCategoryClicked(category: Category) {
-								viewModelScope.launch {
-												_event.send(Event.NavigateToDetails(category.id))
-								}
-				}
-				
-				init {
-								viewModelScope.launch {
-												_categories.value = getCategoryDetailsUseCase(categoryId)
-								}
-				}
+    private val categoryId = savedStateHandle.get<String>("categoryId")
+        ?: throw IllegalArgumentException("Missing categoryId")
+    private val _categories = mutableStateOf<Results<List<Category>>>(Results.Loading)
+    val category: State<Results<List<Category>>> = _categories
+    private val _event = Channel<Event>()
+    val event = _event.receiveAsFlow()
+    fun onCategoryClicked(category: Category) {
+        viewModelScope.launch {
+            _event.send(Event.NavigateToDetails(category.id))
+        }
+    }
+    
+    init {
+        viewModelScope.launch {
+            _categories.value = getCategoryDetailsUseCase(categoryId)
+        }
+    }
 }
 
 sealed class Event {
-				data class NavigateToDetails(val categoryId: Int) : Event()
+    data class NavigateToDetails(val categoryId: Int) : Event()
 }

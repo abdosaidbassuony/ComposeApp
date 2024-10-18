@@ -7,9 +7,9 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun PrimaryButton(onClick: () -> Unit, title: String, modifier: Modifier = Modifier) {
-				Button(
-								onClick = onClick, modifier = modifier
-				) {
-								Text(text = title)
-				}
+    Button(
+        onClick = onClick, modifier = modifier
+    ) {
+        Text(text = title)
+    }
 }

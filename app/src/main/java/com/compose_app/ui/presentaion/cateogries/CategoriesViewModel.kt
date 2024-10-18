@@ -15,26 +15,26 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CategoriesViewModel @Inject constructor(
-				private val getCategoryUseCase: GetCategoryUseCase,
+    private val getCategoryUseCase: GetCategoryUseCase,
 ) : ViewModel() {
-				private val _categories = mutableStateOf<Results<List<Category>>>(Results.Loading)
-				val categories: State<Results<List<Category>>> = _categories
-				private val _event = Channel<Event>()
-				val event = _event.receiveAsFlow()
-				
-				init {
-								viewModelScope.launch {
-												_categories.value = getCategoryUseCase()
-								}
-				}
-				
-				fun onCategoryClicked(category: Category) {
-								viewModelScope.launch {
-												_event.send(Event.NavigateToDetails(category.id))
-								}
-				}
+    private val _categories = mutableStateOf<Results<List<Category>>>(Results.Loading)
+    val categories: State<Results<List<Category>>> = _categories
+    private val _event = Channel<Event>()
+    val event = _event.receiveAsFlow()
+    
+    init {
+        viewModelScope.launch {
+            _categories.value = getCategoryUseCase()
+        }
+    }
+    
+    fun onCategoryClicked(category: Category) {
+        viewModelScope.launch {
+            _event.send(Event.NavigateToDetails(category.id))
+        }
+    }
 }
 
 sealed class Event {
-				data class NavigateToDetails(val categoryId: Int) : Event()
+    data class NavigateToDetails(val categoryId: Int) : Event()
 }

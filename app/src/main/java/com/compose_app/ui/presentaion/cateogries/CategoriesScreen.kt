@@ -13,21 +13,21 @@ import com.example.compose_app.R
 
 @Composable
 fun CategoriesScreen(navController: NavHostController) {
-				val viewModel = hiltViewModel<CategoriesViewModel>()
-				when (val categoriesState = viewModel.categories.value) {
-								is Results.Loading -> {
-												LoadingCircularProgressIndicator()
-								}
-								is Results.Success -> {
-												Content(
-																categoriesState = categoriesState,
-																navController = navController,
-																modifier = Modifier.fillMaxSize()
-												)
-								}
-								is Results.Failure -> {
-												Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") // Display error
-								}
-				}
+    val viewModel = hiltViewModel<CategoriesViewModel>()
+    when (val categoriesState = viewModel.categories.value) {
+        is Results.Loading -> {
+            LoadingCircularProgressIndicator()
+        }
+        is Results.Success -> {
+            Content(
+                categoriesState = categoriesState,
+                navController = navController,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        is Results.Failure -> {
+            Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") // Display error
+        }
+    }
 }
 

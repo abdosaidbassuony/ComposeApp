@@ -10,11 +10,11 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun LoadingCircularProgressIndicator() {
-				Column(
-								verticalArrangement = Arrangement.Center,
-								horizontalAlignment = Alignment.CenterHorizontally,
-								modifier = Modifier.fillMaxSize(),
-				) {
-								CircularProgressIndicator()
-				}
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        CircularProgressIndicator()
+    }
 }

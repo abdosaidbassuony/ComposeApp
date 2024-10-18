@@ -11,15 +11,15 @@ import com.example.compose_app.R
 
 @Composable
 fun BackArrowIcon(
-				modifier: Modifier = Modifier,
-				onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit,
 ) {
-				IconButton(
-								onClick = onBackClick, modifier = modifier
-				) {
-								Icon(
-												imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-												contentDescription = stringResource(R.string.back)
-								)
-				}
+    IconButton(
+        onClick = onBackClick, modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = stringResource(R.string.back)
+        )
+    }
 }
