@@ -5,12 +5,12 @@ import com.compose_app.domain.entities.Category
 import com.compose_app.domain.repository.CategoriesRepository
 import javax.inject.Inject
 
-class GetCategoryUseCase @Inject constructor(
+class GetCategoryDetailsUseCase @Inject constructor(
     private val repository: CategoriesRepository,
 ) {
-    suspend operator fun invoke(): Results<List<Category>> {
+    suspend operator fun invoke(categoryId: String): Results<List<Category>> {
         return try {
-            val categories = repository.getCategories()
+            val categories = repository.getCategoryDetails(categoryId = categoryId)
             Results.Success(categories)
         } catch (e: Exception) {
             Results.Failure(e)

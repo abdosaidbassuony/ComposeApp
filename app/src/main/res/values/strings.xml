@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">compose_app</string>
+    <string name="event_booking">Event Booking</string>
+    <string name="save">Save</string>
+    <string name="add_event_to_view_cost_estimate">Add your event to view our\\n cost estimate\n</string>
+    <string name="error">Error:\n</string>
+    <string name="back">Back\n</string>
+    <string name="remove_item">Remove item\n</string>
 </resources>
