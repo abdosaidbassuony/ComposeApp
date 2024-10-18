@@ -26,7 +26,7 @@ fun CategoriesScreen(navController: NavHostController) {
             )
         }
         is Results.Failure -> {
-            Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") // Display error
+            Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") //Display error
         }
     }
 }

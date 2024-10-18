@@ -11,14 +11,14 @@ import com.compose_app.core.utils.Results
 import com.compose_app.ui.presentaion.component.LoadingCircularProgressIndicator
 import com.example.compose_app.R
 
-// Category details screen composable
+//Category details screen composable
 @Composable
 fun CategoryDetailsScreen(navController: NavHostController) {
     val viewModel = hiltViewModel<CategoryDetailsViewModel>()
     
     when (val categoriesState = viewModel.category.value) {
         is Results.Loading -> {
-            //	Loading indicator
+            //Loading indicator
             LoadingCircularProgressIndicator()
         }
         is Results.Success -> {
@@ -29,7 +29,7 @@ fun CategoryDetailsScreen(navController: NavHostController) {
             )
         }
         is Results.Failure -> {
-            Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") // Display error
+            Text(text = "${stringResource(R.string.error)} ${categoriesState.exception.message}") //Display error
         }
     }
 }

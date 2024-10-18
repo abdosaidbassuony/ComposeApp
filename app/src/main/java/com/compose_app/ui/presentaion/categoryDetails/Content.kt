@@ -33,13 +33,13 @@ fun Content(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            //	Back arrow icon
+            //Back arrow icon
             BackArrowIcon(
                 onBackClick = { navController.popBackStack() },
                 modifier = Modifier.padding(16.dp)
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                //	Header screen widget
+                //Header screen widget
                 HeaderScreenWidget(
                     screenTitle = stringResource(R.string.event_booking),
                     screenSubTitle = stringResource(R.string.add_event_to_view_cost_estimate),
@@ -48,7 +48,7 @@ fun Content(
                         .fillMaxWidth()
                         .padding(top = 16.dp)
                 )
-                //	Categories grid list view
+                //Categories grid list view
                 CategoriesGridListView(
                     categoriesState = categoriesState,
                     onAddItemClicked = { },

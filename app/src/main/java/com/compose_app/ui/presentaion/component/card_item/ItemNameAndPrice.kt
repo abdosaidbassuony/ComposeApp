@@ -9,13 +9,13 @@ import androidx.compose.ui.text.font.FontWeight
 @Composable
 fun ItemNameAndPrice(title: String, price: Double?) {
     Column {
-        //	Item name
+        //Item name
         Text(
             text = title,
             fontWeight = FontWeight.Light,
             color = Color.Gray
         )
-        //	Item price if available
+        //Item price if available
         if (price != null)
             Text(
                 text = "$$price",

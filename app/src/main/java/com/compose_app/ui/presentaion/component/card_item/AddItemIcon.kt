@@ -18,7 +18,7 @@ fun AddItemIcon(isAdded: Boolean, onAddItemClicked: () -> Unit) {
     IconButton(
         onClick = onAddItemClicked,
     ) {
-        //	Add item icon with check mark if item is added
+        //Add item icon with check mark if item is added
         Icon(
             modifier = Modifier.size(24.dp), imageVector = if (isAdded) {
                 Icons.Filled.CheckCircle

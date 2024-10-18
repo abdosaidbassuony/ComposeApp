@@ -25,7 +25,7 @@ fun CardItem(
     onCartClick: () -> Unit = {},
     onAddItemClicked: () -> Unit = {},
 ) {
-    //	Cart item card
+    //Cart item card
     Card(
         modifier = modifier,
         elevation = 2.dp, onClick = onCartClick,
@@ -33,9 +33,9 @@ fun CardItem(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Item image
+            //Item image
             CardImage(imageUrl)
-            //	Add item icon
+            //Add item icon
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -43,9 +43,9 @@ fun CardItem(
                     .fillMaxWidth()
                     .padding(8.dp),
             ) {
-                // Item name and price
+                //Item name and price
                 ItemNameAndPrice(title, price)
-                //	Navigate to details icon
+                //Navigate to details icon
                 if (homeScreen) NavigateToDetailsIcon()
             }
         }

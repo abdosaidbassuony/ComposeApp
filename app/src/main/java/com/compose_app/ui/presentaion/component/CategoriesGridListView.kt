@@ -20,7 +20,7 @@ fun CategoriesGridListView(
     onCartClick: (Category) -> Unit = {},
     onAddItemClicked: (Category) -> Unit = {},
 ) {
-    // Category vertical grid
+    //Category vertical grid
     LazyVerticalGrid(
         modifier = modifier,
         columns = GridCells.Fixed(2),
@@ -28,7 +28,7 @@ fun CategoriesGridListView(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        // Category cart item
+        //Category cart item
         items(categoriesState.data.size) { index ->
             val category = categoriesState.data[index]
             CardItem(

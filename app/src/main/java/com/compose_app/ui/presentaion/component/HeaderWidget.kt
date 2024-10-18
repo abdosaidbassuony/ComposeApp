@@ -13,7 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-//	Header screen widget
+//Header screen widget
 @Composable
 fun HeaderScreenWidget(
     modifier: Modifier = Modifier,
@@ -21,14 +21,14 @@ fun HeaderScreenWidget(
     screenSubTitle: String,
     cost: String? = null,
 ) {
-    // Prepare cost value
+    //Prepare cost value
     val value = if (cost == null) "-" else "$$cost"
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,
     ) {
-        // Screen title
+        //Screen title
         Text(
             text = screenTitle,
             style = TextStyle(
@@ -37,7 +37,7 @@ fun HeaderScreenWidget(
                 fontSize = 20.sp
             )
         )
-        //	Screen subtitle
+        //Screen subtitle
         Text(
             text = screenSubTitle,
             style = TextStyle(
@@ -49,7 +49,7 @@ fun HeaderScreenWidget(
                 .padding(horizontal = 12.dp)
                 .padding(top = 8.dp)
         )
-        // Event cost value
+        //Event cost value
         Text(
             text = value,
             style = TextStyle(
