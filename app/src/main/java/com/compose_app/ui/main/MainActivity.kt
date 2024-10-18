@@ -18,10 +18,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             ComposeAppTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colors.background,
                 ) { RouteApp() }
             }
         }
-
     }
 }
+

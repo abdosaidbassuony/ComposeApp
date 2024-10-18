@@ -6,8 +6,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.compose_app.ui.screen.cateogries.CategoriesScreen
-
+import com.compose_app.ui.presentaion.categoryDetails.CategoryDetailsScreen
+import com.compose_app.ui.presentaion.cateogries.CategoriesScreen
+/// Update version
 @Composable
 fun RouteApp() {
     val navController = rememberNavController()
@@ -17,12 +18,9 @@ fun RouteApp() {
         composable(
             "category/{categoryId}",
             arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val categoryId = backStackEntry.arguments?.getString("categoryId")
-//            CategoryDetailsScreen(categoryId)
+        ) {
+            CategoryDetailsScreen(navController)
         }
     }
-
-
 }
 
