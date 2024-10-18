@@ -15,8 +15,7 @@ fun BackArrowIcon(
 				onBackClick: () -> Unit,
 ) {
 				IconButton(
-								onClick = onBackClick,
-								modifier = modifier
+								onClick = onBackClick, modifier = modifier
 				) {
 								Icon(
 												imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,

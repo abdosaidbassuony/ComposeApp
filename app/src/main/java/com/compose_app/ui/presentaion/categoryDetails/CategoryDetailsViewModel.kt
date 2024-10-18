@@ -33,8 +33,7 @@ class CategoryDetailsViewModel @Inject constructor(
 				
 				init {
 								viewModelScope.launch {
-												_categories.value =
-																getCategoryDetailsUseCase(categoryId)
+												_categories.value = getCategoryDetailsUseCase(categoryId)
 								}
 				}
 }
