@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.compose_app.ui.screen.cateogries.CategoriesScreen
+import com.compose_app.ui.screen.profile.ProfileScreen
 
 @Composable
 fun RouteApp() {
@@ -21,6 +22,7 @@ fun RouteApp() {
             val categoryId = backStackEntry.arguments?.getString("categoryId")
 //            CategoryDetailsScreen(categoryId)
         }
+        composable("profile") { ProfileScreen(navController) }
     }
 
 

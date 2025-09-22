@@ -19,24 +19,44 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.compose_app.core.utils.Results
 import com.compose_app.data.models.Category
+import androidx.navigation.NavController
 import com.compose_app.ui.component.BackArrowIcon
 import com.compose_app.ui.theme.background
 
 @Composable
-fun CategoriesScreenBody(categoriesState: Results.Success<List<Category>>) {
+fun CategoriesScreenBody(categoriesState: Results.Success<List<Category>>, navController: NavController) {
     Scaffold (
         backgroundColor = background,
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("Categories") },
+                navigationIcon = {
+                    BackArrowIcon(navController)
+                },
+                actions = {
+                    IconButton(
+                        onClick = { navController.navigate("profile") }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile"
+                        )
+                    }
+                }
+            )
+        }
     ) {padding->
         println("padding $padding")
         Column(modifier = Modifier.padding(padding)) {
-            BackArrowIcon()
             LazyColumn {
                 items(categoriesState.data.size) { index -> // Display data
                     val category = categoriesState.data[index]
