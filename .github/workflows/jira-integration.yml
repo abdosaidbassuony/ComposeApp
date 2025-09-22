@@ -34,17 +34,33 @@ jobs:
         run: |
           TICKET_ID="${{ steps.extract.outputs.ticket_id }}"
 
+          # Check if JIRA_AUTH is set
+          if [ -z "${{ secrets.JIRA_AUTH }}" ]; then
+            echo "❌ JIRA_AUTH secret is not configured"
+            echo "Please add JIRA_AUTH secret to your repository settings"
+            exit 1
+          fi
+
           # Get available transitions for the ticket
           RESPONSE=$(curl -s -X GET \
             -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
             -H "Accept: application/json" \
             "https://abdo-said.atlassian.net/rest/api/3/issue/$TICKET_ID/transitions")
 
+          # Check if we got an error response
+          if echo "$RESPONSE" | jq -e '.errorMessages' > /dev/null 2>&1; then
+            echo "❌ Error getting transitions:"
+            echo "$RESPONSE" | jq '.errorMessages'
+            exit 1
+          fi
+
           echo "Available transitions:"
           echo "$RESPONSE" | jq '.transitions[] | {id: .id, name: .name}'
 
           # Store transitions for later use
-          echo "transitions=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "transitions<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESPONSE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Update Jira Ticket Status
         if: steps.extract.outputs.ticket_id != ''
@@ -54,15 +70,18 @@ jobs:
           PR_STATE="${{ github.event.action }}"
           PR_MERGED="${{ github.event.pull_request.merged }}"
 
+          echo "PR State: $PR_STATE, Merged: $PR_MERGED"
+
           # Determine target status based on PR action
           if [ "$PR_STATE" = "opened" ] || [ "$PR_STATE" = "reopened" ]; then
-            TARGET_STATUSES=("In Review" "In PR" "Code Review" "Review")
+            # Try both uppercase and mixed case variations
+            TARGET_STATUSES=("IN REVIEW" "In Review" "IN PR" "In PR" "CODE REVIEW" "Code Review" "REVIEW" "Review")
             COMMENT="🔍 Pull Request opened for review: $PR_URL"
           elif [ "$PR_STATE" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
-            TARGET_STATUSES=("QA" "Ready for QA" "Testing" "Done" "Resolved")
+            TARGET_STATUSES=("QA READY" "QA" "Ready for QA" "TESTING" "Testing" "DONE" "Done" "RESOLVED" "Resolved")
             COMMENT="✅ Pull Request merged: $PR_URL"
           elif [ "$PR_STATE" = "closed" ] && [ "$PR_MERGED" = "false" ]; then
-            TARGET_STATUSES=("To Do" "Backlog" "Open" "Reopened")
+            TARGET_STATUSES=("TO DO" "To Do" "TODO" "BACKLOG" "Backlog" "OPEN" "Open" "REOPENED" "Reopened" "IN PROGRESS" "In Progress")
             COMMENT="❌ Pull Request closed without merging: $PR_URL"
           else
             echo "Unknown PR state: $PR_STATE"
@@ -72,40 +91,62 @@ jobs:
           # Get transitions JSON
           TRANSITIONS='${{ steps.transitions.outputs.transitions }}'
 
-          # Find matching transition ID
+          # Find matching transition ID (case-insensitive)
           TRANSITION_ID=""
+          FOUND_NAME=""
+
+          echo "Looking for transitions matching: ${TARGET_STATUSES[*]}"
+
           for status in "${TARGET_STATUSES[@]}"; do
+            # Try exact match first
             ID=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.name==\"$status\") | .id")
             if [ ! -z "$ID" ] && [ "$ID" != "null" ]; then
               TRANSITION_ID=$ID
-              echo "Found transition: $status (ID: $ID)"
+              FOUND_NAME="$status"
+              echo "Found exact match: $status (ID: $ID)"
+              break
+            fi
+
+            # Try case-insensitive match
+            ID=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.name | ascii_downcase == \"$(echo "$status" | tr '[:upper:]' '[:lower:]')\") | .id")
+            if [ ! -z "$ID" ] && [ "$ID" != "null" ]; then
+              TRANSITION_ID=$ID
+              FOUND_NAME=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.id==\"$ID\") | .name")
+              echo "Found case-insensitive match: $FOUND_NAME (ID: $ID)"
               break
             fi
           done
 
           # Apply transition if found
           if [ ! -z "$TRANSITION_ID" ]; then
-            echo "Transitioning to status ID: $TRANSITION_ID"
+            echo "Transitioning to: $FOUND_NAME (ID: $TRANSITION_ID)"
 
             # Update ticket status
-            TRANSITION_RESPONSE=$(curl -s -X POST \
+            TRANSITION_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
               -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
               -H "Content-Type: application/json" \
               "https://abdo-said.atlassian.net/rest/api/3/issue/$TICKET_ID/transitions" \
               -d "{\"transition\": {\"id\": \"$TRANSITION_ID\"}}")
 
-            if [ $? -eq 0 ]; then
-              echo "✅ Successfully updated ticket status"
+            HTTP_STATUS=$(echo "$TRANSITION_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+            RESPONSE_BODY=$(echo "$TRANSITION_RESPONSE" | sed '/HTTP_STATUS:/d')
+
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              echo "✅ Successfully updated ticket status to: $FOUND_NAME"
             else
-              echo "⚠️ Failed to update ticket status"
-              echo "$TRANSITION_RESPONSE"
+              echo "⚠️ Failed to update ticket status (HTTP $HTTP_STATUS)"
+              echo "Response: $RESPONSE_BODY"
             fi
           else
-            echo "⚠️ No matching transition found for statuses: ${TARGET_STATUSES[*]}"
+            echo "⚠️ No matching transition found"
+            echo "Tried to find: ${TARGET_STATUSES[*]}"
+            echo "Available transitions are:"
+            echo "$TRANSITIONS" | jq -r '.transitions[] | "  - \(.name) (ID: \(.id))"'
           fi
 
           # Add comment to Jira ticket
-          COMMENT_RESPONSE=$(curl -s -X POST \
+          echo "Adding comment to ticket..."
+          COMMENT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
             -H "Authorization: Basic ${{ secrets.JIRA_AUTH }}" \
             -H "Content-Type: application/json" \
             "https://abdo-said.atlassian.net/rest/api/3/issue/$TICKET_ID/comment" \
@@ -127,28 +168,42 @@ jobs:
               }
             }")
 
-          if [ $? -eq 0 ]; then
+          HTTP_STATUS=$(echo "$COMMENT_RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
             echo "✅ Successfully added comment to ticket"
           else
-            echo "⚠️ Failed to add comment"
-            echo "$COMMENT_RESPONSE"
+            echo "⚠️ Failed to add comment (HTTP $HTTP_STATUS)"
           fi
 
       - name: Add PR Comment
-        if: steps.extract.outputs.ticket_id != ''
+        if: steps.extract.outputs.ticket_id != '' && github.event.action == 'opened'
         uses: actions/github-script@v6
         with:
           script: |
             const ticketId = '${{ steps.extract.outputs.ticket_id }}';
             const jiraUrl = `https://abdo-said.atlassian.net/browse/${ticketId}`;
 
-            const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})
-
-            This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
-
-            github.rest.issues.createComment({
+            // Check if we already added a comment
+            const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
+              repo: context.repo.repo
             });
+
+            const alreadyCommented = comments.data.some(comment =>
+              comment.body.includes(`Jira Ticket: [${ticketId}]`)
+            );
+
+            if (!alreadyCommented) {
+              const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})
+
+              This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
