@@ -183,9 +183,7 @@ jobs:
               );
 
               if (!alreadyCommented) {
-                const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})
-
-This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
+                const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})\n\nThis PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
 
                 await github.rest.issues.createComment({
                   issue_number: context.issue.number,
