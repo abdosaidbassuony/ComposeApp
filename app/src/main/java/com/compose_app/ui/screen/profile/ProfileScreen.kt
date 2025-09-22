@@ -3,7 +3,7 @@ package com.compose_app.ui.screen.profile
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +21,7 @@ fun ProfileScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Profile") },
                 navigationIcon = {
-                    BackArrowIcon(navController)
+                    BackArrowIcon()
                 }
             )
         }
@@ -38,14 +38,14 @@ fun ProfileScreen(navController: NavController) {
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colors.primary.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "JD",
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colors.primary
                 )
             }
 
@@ -64,7 +64,7 @@ fun ProfileScreen(navController: NavController) {
             Text(
                 text = "john.doe@example.com",
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -99,7 +99,7 @@ fun ProfileScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
+                    backgroundColor = MaterialTheme.colors.error
                 )
             ) {
                 Text("Sign Out")
@@ -115,7 +115,7 @@ fun ProfileInfoCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = 2.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -139,7 +139,7 @@ fun ProfileInfoCard(
                 }
 
                 if (index < items.size - 1) {
-                    HorizontalDivider(
+                    Divider(
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }

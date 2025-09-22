@@ -40,7 +40,7 @@ fun CategoriesScreenBody(categoriesState: Results.Success<List<Category>>, navCo
             TopAppBar(
                 title = { Text("Categories") },
                 navigationIcon = {
-                    BackArrowIcon(navController)
+                    BackArrowIcon()
                 },
                 actions = {
                     IconButton(
