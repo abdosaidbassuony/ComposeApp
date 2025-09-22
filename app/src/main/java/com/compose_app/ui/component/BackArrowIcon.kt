@@ -20,5 +20,9 @@ fun BackArrowIcon() {
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = "back"
         )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = "back"
+        )
     }
 }
