@@ -201,3 +201,4 @@ This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronize
               console.log('⚠️ Could not add PR comment (might need permissions):', error.message);
               console.log('This is not critical - the Jira integration still works');
             }
+            }
