@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, closed, reopened, ready_for_review, converted_to_draft]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   update-jira:
     runs-on: ubuntu-latest
@@ -60,9 +65,11 @@ jobs:
           echo "Available transitions:"
           echo "$TRANSITIONS" | jq -r '.transitions[] | "\(.id) - \(.name) -> \(.to.name)"'
           
-          echo "transitions<<EOF" >> $GITHUB_OUTPUT
-          echo "$TRANSITIONS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "transitions<<EOF"
+            echo "$TRANSITIONS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Update Jira Status
         if: steps.extract.outputs.ticket_id != ''
@@ -178,16 +185,30 @@ jobs:
       - name: Add PR Comment
         if: steps.extract.outputs.ticket_id != '' && github.event.action == 'opened'
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const ticketId = '${{ steps.extract.outputs.ticket_id }}';
             const jiraUrl = `${{ secrets.JIRA_BASE_URL }}/browse/${ticketId}`;
             
-            const comment = `🎫 **Jira Ticket**: [${ticketId}](${jiraUrl})`;
+            try {
+              const comment = `🎫 **Jira Ticket**: [${ticketId}](${jiraUrl})
             
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+            This PR is linked to Jira ticket ${ticketId}. Status updates are automated:
+            - 🔍 PR opened → "In Review"
+            - ✅ PR merged → "Done/QA" 
+            - ❌ PR closed → "To Do"`;
+            
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            
+              console.log('✅ Added Jira link to PR');
+            } catch (error) {
+              console.log('⚠️ Could not add PR comment (permissions):', error.message);
+              console.log('The Jira integration still works - this is just cosmetic');
+            }
