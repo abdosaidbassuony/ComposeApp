@@ -17,7 +17,7 @@ fun CategoriesScreen(navController: NavHostController) {
         }
 
         is Results.Success -> {
-            CategoriesScreenBody(categoriesState)
+            CategoriesScreenBody(categoriesState, navController)
         }
 
         is Results.Failure -> {
