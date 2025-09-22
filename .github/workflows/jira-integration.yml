@@ -3,12 +3,6 @@ name: Jira Integration
 on:
   pull_request:
     types: [opened, closed, reopened, ready_for_review, converted_to_draft]
-    branches: [main, develop, master]
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   update-jira:
@@ -17,334 +11,183 @@ jobs:
       - name: Extract Jira Ticket ID
         id: extract
         run: |
-          # Extract branch name from PR
           BRANCH_NAME="${{ github.head_ref }}"
-          echo "🔍 Branch: $BRANCH_NAME"
+          echo "Branch: $BRANCH_NAME"
 
-          # Extract ticket ID (e.g., KAN-123 from feature/KAN-123-description)
           TICKET_ID=$(echo "$BRANCH_NAME" | grep -oE 'KAN-[0-9]+' | head -1)
 
-          # If not found in branch, try PR title
           if [ -z "$TICKET_ID" ]; then
             PR_TITLE="${{ github.event.pull_request.title }}"
             TICKET_ID=$(echo "$PR_TITLE" | grep -oE 'KAN-[0-9]+' | head -1)
-            echo "🔍 Checking PR title: $PR_TITLE"
-          fi
-
-          # If not found, try PR body
-          if [ -z "$TICKET_ID" ]; then
-            PR_BODY="${{ github.event.pull_request.body }}"
-            TICKET_ID=$(echo "$PR_BODY" | grep -oE 'KAN-[0-9]+' | head -1)
-            echo "🔍 Checking PR body"
           fi
 
           if [ -z "$TICKET_ID" ]; then
-            echo "⚠️ No Jira ticket ID found in branch name, PR title, or PR body"
-            echo "💡 Use branch pattern: feature/KAN-123-description"
+            echo "No Jira ticket found"
             echo "ticket_id=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          echo "✅ Extracted Ticket ID: $TICKET_ID"
+          echo "Found ticket: $TICKET_ID"
           echo "ticket_id=$TICKET_ID" >> $GITHUB_OUTPUT
 
-      - name: Validate Secrets
+      - name: Get Ticket Info
         if: steps.extract.outputs.ticket_id != ''
-        run: |
-          if [ -z "${{ secrets.JIRA_EMAIL }}" ]; then
-            echo "❌ JIRA_EMAIL secret is missing"
-            echo "Add it at: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            exit 1
-          fi
-          
-          if [ -z "${{ secrets.JIRA_API_TOKEN }}" ]; then
-            echo "❌ JIRA_API_TOKEN secret is missing"
-            echo "Add it at: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            exit 1
-          fi
-          
-          if [ -z "${{ secrets.JIRA_BASE_URL }}" ]; then
-            echo "❌ JIRA_BASE_URL secret is missing"
-            echo "Add it at: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            exit 1
-          fi
-          
-          echo "✅ All required secrets are present"
-
-      - name: Get Current Ticket Status
-        if: steps.extract.outputs.ticket_id != ''
-        id: current-status
+        id: ticket-info
         run: |
           TICKET_ID="${{ steps.extract.outputs.ticket_id }}"
           
-          echo "🔍 Getting current status for $TICKET_ID"
-          
-          # Get current ticket info
-          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          # Get current ticket status
+          RESPONSE=$(curl -s \
             -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
             -H "Accept: application/json" \
             "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID")
           
-          # Extract HTTP status and body
-          HTTP_STATUS=$(echo "$RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-          BODY=$(echo "$RESPONSE" | sed -E 's/HTTPSTATUS:[0-9]*$//')
-          
-          echo "📊 HTTP Status: $HTTP_STATUS"
-          
-          if [ "$HTTP_STATUS" -ne 200 ]; then
-            echo "❌ Failed to get ticket info (HTTP $HTTP_STATUS)"
-            echo "Response: $BODY"
-          
-            if [ "$HTTP_STATUS" -eq 404 ]; then
-              echo "💡 Ticket $TICKET_ID doesn't exist or you don't have access"
-            elif [ "$HTTP_STATUS" -eq 401 ]; then
-              echo "💡 Authentication failed - check your JIRA_EMAIL and JIRA_API_TOKEN"
-            fi
+          if [ $? -ne 0 ]; then
+            echo "Failed to get ticket info"
             exit 1
           fi
           
-          # Extract current status
-          CURRENT_STATUS=$(echo "$BODY" | jq -r '.fields.status.name')
-          TICKET_SUMMARY=$(echo "$BODY" | jq -r '.fields.summary')
-          
-          echo "📋 Ticket: $TICKET_SUMMARY"
-          echo "📊 Current Status: $CURRENT_STATUS"
+          CURRENT_STATUS=$(echo "$RESPONSE" | jq -r '.fields.status.name')
+          echo "Current status: $CURRENT_STATUS"
           echo "current_status=$CURRENT_STATUS" >> $GITHUB_OUTPUT
 
-      - name: Get Available Transitions
-        if: steps.extract.outputs.ticket_id != ''
-        id: transitions
-        run: |
-          TICKET_ID="${{ steps.extract.outputs.ticket_id }}"
-          
-          echo "🔄 Getting available transitions for $TICKET_ID"
-          
           # Get available transitions
-          RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          TRANSITIONS=$(curl -s \
             -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
             -H "Accept: application/json" \
             "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID/transitions")
           
-          # Extract HTTP status and body
-          HTTP_STATUS=$(echo "$RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-          BODY=$(echo "$RESPONSE" | sed -E 's/HTTPSTATUS:[0-9]*$//')
-          
-          if [ "$HTTP_STATUS" -ne 200 ]; then
-            echo "❌ Failed to get transitions (HTTP $HTTP_STATUS)"
-            echo "Response: $BODY"
-            exit 1
-          fi
-          
           echo "Available transitions:"
-          echo "$BODY" | jq -r '.transitions[] | "  \(.id) - \(.name) → \(.to.name)"'
+          echo "$TRANSITIONS" | jq -r '.transitions[] | "\(.id) - \(.name) -> \(.to.name)"'
           
-          # Store transitions for later use
-          echo "transitions=$BODY" >> $GITHUB_OUTPUT
+          echo "transitions<<EOF" >> $GITHUB_OUTPUT
+          echo "$TRANSITIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Update Jira Ticket Status
+      - name: Update Jira Status
         if: steps.extract.outputs.ticket_id != ''
         run: |
           TICKET_ID="${{ steps.extract.outputs.ticket_id }}"
-          CURRENT_STATUS="${{ steps.current-status.outputs.current_status }}"
+          CURRENT_STATUS="${{ steps.ticket-info.outputs.current_status }}"
+          PR_ACTION="${{ github.event.action }}"
+          IS_MERGED="${{ github.event.pull_request.merged }}"
+          IS_DRAFT="${{ github.event.pull_request.draft }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
-          PR_STATE="${{ github.event.action }}"
-          PR_MERGED="${{ github.event.pull_request.merged }}"
-          PR_DRAFT="${{ github.event.pull_request.draft }}"
-
-          echo "🎯 PR Event: $PR_STATE"
-          echo "📊 Current Status: $CURRENT_STATUS"
-          echo "📝 Is Draft: $PR_DRAFT"
-          echo "🔗 Is Merged: $PR_MERGED"
-
-          # Determine target status based on PR action
-          case "$PR_STATE" in
-            "opened"|"reopened")
-              if [ "$PR_DRAFT" = "true" ]; then
-                TARGET_STATUSES=("IN PROGRESS" "In Progress" "DEVELOPMENT" "Development" "DOING" "Doing")
-                COMMENT="📝 Draft Pull Request created: $PR_URL"
-                EVENT_DESC="Draft PR opened"
-              else
-                TARGET_STATUSES=("IN REVIEW" "In Review" "REVIEW" "Review" "CODE REVIEW" "Code Review" "IN PR" "In PR" "PENDING REVIEW" "Pending Review")
-                COMMENT="🔍 Pull Request opened for review: $PR_URL"
-                EVENT_DESC="PR opened for review"
-              fi
-              ;;
-            "ready_for_review")
-              TARGET_STATUSES=("IN REVIEW" "In Review" "REVIEW" "Review" "CODE REVIEW" "Code Review" "IN PR" "In PR" "PENDING REVIEW" "Pending Review")
-              COMMENT="🔍 Pull Request ready for review: $PR_URL"
-              EVENT_DESC="PR ready for review"
-              ;;
-            "converted_to_draft")
-              TARGET_STATUSES=("IN PROGRESS" "In Progress" "DEVELOPMENT" "Development" "DOING" "Doing")
-              COMMENT="📝 Pull Request converted to draft: $PR_URL"
-              EVENT_DESC="PR converted to draft"
-              ;;
-            "closed")
-              if [ "$PR_MERGED" = "true" ]; then
-                TARGET_STATUSES=("DONE" "Done" "QA" "Ready for QA" "QA READY" "TESTING" "Testing" "RESOLVED" "Resolved" "COMPLETED" "Completed" "CLOSED" "Closed")
-                COMMENT="✅ Pull Request merged: $PR_URL - Ready for QA!"
-                EVENT_DESC="PR merged"
-              else
-                TARGET_STATUSES=("TO DO" "To Do" "TODO" "BACKLOG" "Backlog" "OPEN" "Open" "IN PROGRESS" "In Progress")
-                COMMENT="❌ Pull Request closed without merging: $PR_URL"
-                EVENT_DESC="PR closed without merge"
-              fi
-              ;;
-            *)
-              echo "ℹ️ Unknown PR state: $PR_STATE - skipping transition"
-              exit 0
-              ;;
-          esac
-
-          echo "🎯 Target statuses: ${TARGET_STATUSES[*]}"
-
-          # Get transitions JSON
-          TRANSITIONS='${{ steps.transitions.outputs.transitions }}'
-
-          # Find matching transition ID
-          TRANSITION_ID=""
-          MATCHED_STATUS=""
-          for status in "${TARGET_STATUSES[@]}"; do
-            ID=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.to.name==\"$status\") | .id")
-            if [ -n "$ID" ] && [ "$ID" != "null" ]; then
-              TRANSITION_ID=$ID
-              MATCHED_STATUS=$status
-              echo "✅ Found transition: $status (ID: $ID)"
-              break
-            fi
-          done
-
-          # Check if we're already in the target status
-          for status in "${TARGET_STATUSES[@]}"; do
-            if [ "$CURRENT_STATUS" = "$status" ]; then
-              echo "ℹ️ Ticket is already in target status: $CURRENT_STATUS"
-              echo "🎯 Event: $EVENT_DESC"
-              # Still add comment even if no transition needed
-              TRANSITION_ID="SKIP_TRANSITION"
-              break
-            fi
-          done
-
-          # Apply transition if found
-          if [ -n "$TRANSITION_ID" ] && [ "$TRANSITION_ID" != "SKIP_TRANSITION" ]; then
-            echo "🔄 Transitioning from '$CURRENT_STATUS' to '$MATCHED_STATUS' (ID: $TRANSITION_ID)"
-
-            # Update ticket status
-            TRANSITION_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-              -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              -X POST \
-              "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID/transitions" \
-              -d "{\"transition\": {\"id\": \"$TRANSITION_ID\"}}")
-
-            # Extract HTTP status
-            HTTP_STATUS=$(echo "$TRANSITION_RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-            BODY=$(echo "$TRANSITION_RESPONSE" | sed -E 's/HTTPSTATUS:[0-9]*$//')
-
-            if [ "$HTTP_STATUS" -eq 204 ]; then
-              echo "✅ Successfully transitioned ticket to '$MATCHED_STATUS'"
+          
+          echo "PR Action: $PR_ACTION"
+          echo "Current Status: $CURRENT_STATUS"
+          echo "Is Merged: $IS_MERGED"
+          echo "Is Draft: $IS_DRAFT"
+          
+          # Determine target status
+          TARGET_STATUS=""
+          COMMENT=""
+          
+          if [ "$PR_ACTION" = "opened" ] || [ "$PR_ACTION" = "reopened" ]; then
+            if [ "$IS_DRAFT" = "true" ]; then
+              TARGET_STATUS="In Progress"
+              COMMENT="Draft PR created: $PR_URL"
             else
-              echo "❌ Failed to transition ticket (HTTP $HTTP_STATUS)"
-              echo "Response: $BODY"
+              TARGET_STATUS="In Review"
+              COMMENT="PR opened for review: $PR_URL"
             fi
-          elif [ "$TRANSITION_ID" = "SKIP_TRANSITION" ]; then
-            echo "⏭️ Skipping transition - already in correct status"
-          else
-            echo "⚠️ No matching transition found for target statuses: ${TARGET_STATUSES[*]}"
-            echo "Available transitions:"
-            echo "$TRANSITIONS" | jq -r '.transitions[] | "  \(.name) → \(.to.name)"'
+          elif [ "$PR_ACTION" = "ready_for_review" ]; then
+            TARGET_STATUS="In Review"
+            COMMENT="PR ready for review: $PR_URL"
+          elif [ "$PR_ACTION" = "converted_to_draft" ]; then
+            TARGET_STATUS="In Progress"
+            COMMENT="PR converted to draft: $PR_URL"
+          elif [ "$PR_ACTION" = "closed" ]; then
+            if [ "$IS_MERGED" = "true" ]; then
+              TARGET_STATUS="Done"
+              COMMENT="PR merged: $PR_URL"
+            else
+              TARGET_STATUS="To Do"
+              COMMENT="PR closed without merge: $PR_URL"
+            fi
           fi
-
-          # Add comment to Jira ticket
-          echo "💬 Adding comment to ticket..."
-          COMMENT_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+          
+          echo "Target Status: $TARGET_STATUS"
+          
+          if [ -z "$TARGET_STATUS" ]; then
+            echo "No target status determined"
+            exit 0
+          fi
+          
+          # Skip if already in target status
+          if [ "$CURRENT_STATUS" = "$TARGET_STATUS" ]; then
+            echo "Already in target status: $TARGET_STATUS"
+            exit 0
+          fi
+          
+          # Find transition ID
+          TRANSITIONS='${{ steps.ticket-info.outputs.transitions }}'
+          
+          # Try exact match first
+          TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r ".transitions[] | select(.to.name == \"$TARGET_STATUS\") | .id")
+          
+          # Try alternative names if not found
+          if [ -z "$TRANSITION_ID" ] || [ "$TRANSITION_ID" = "null" ]; then
+            case "$TARGET_STATUS" in
+              "In Review")
+                TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r '.transitions[] | select(.to.name | test("Review|REVIEW")) | .id' | head -1)
+                ;;
+              "In Progress") 
+                TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r '.transitions[] | select(.to.name | test("Progress|PROGRESS|Development|DEVELOPMENT")) | .id' | head -1)
+                ;;
+              "Done")
+                TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r '.transitions[] | select(.to.name | test("Done|DONE|QA|Resolved|RESOLVED")) | .id' | head -1)
+                ;;
+              "To Do")
+                TRANSITION_ID=$(echo "$TRANSITIONS" | jq -r '.transitions[] | select(.to.name | test("To Do|TODO|Backlog|BACKLOG")) | .id' | head -1)
+                ;;
+            esac
+          fi
+          
+          if [ -z "$TRANSITION_ID" ] || [ "$TRANSITION_ID" = "null" ]; then
+            echo "No transition found to: $TARGET_STATUS"
+            echo "Available transitions:"
+            echo "$TRANSITIONS" | jq -r '.transitions[] | "  \(.name) -> \(.to.name)"'
+            exit 0
+          fi
+          
+          echo "Using transition ID: $TRANSITION_ID"
+          
+          # Execute transition
+          curl -s -X POST \
             -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -X POST \
-            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID/comment" \
-            -d "{
-              \"body\": {
-                \"type\": \"doc\",
-                \"version\": 1,
-                \"content\": [
-                  {
-                    \"type\": \"paragraph\",
-                    \"content\": [
-                      {
-                        \"type\": \"text\",
-                        \"text\": \"$COMMENT\"
-                      }
-                    ]
-                  }
-                ]
-              }
-            }")
-
-          # Extract HTTP status for comment
-          COMMENT_HTTP_STATUS=$(echo "$COMMENT_RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-
-          if [ "$COMMENT_HTTP_STATUS" -eq 201 ]; then
-            echo "✅ Successfully added comment to ticket"
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID/transitions" \
+            -d "{\"transition\": {\"id\": \"$TRANSITION_ID\"}}"
+          
+          if [ $? -eq 0 ]; then
+            echo "Successfully updated ticket status"
           else
-            echo "⚠️ Failed to add comment (HTTP $COMMENT_HTTP_STATUS)"
-            echo "This doesn't affect the transition"
+            echo "Failed to update ticket status"
           fi
+          
+          # Add comment
+          curl -s -X POST \
+            -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.JIRA_BASE_URL }}/rest/api/3/issue/$TICKET_ID/comment" \
+            -d "{\"body\": {\"type\": \"doc\", \"version\": 1, \"content\": [{\"type\": \"paragraph\", \"content\": [{\"type\": \"text\", \"text\": \"$COMMENT\"}]}]}}"
+          
+          echo "Added comment to ticket"
 
-      - name: Add PR Comment with Jira Link
+      - name: Add PR Comment
         if: steps.extract.outputs.ticket_id != '' && github.event.action == 'opened'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const ticketId = '${{ steps.extract.outputs.ticket_id }}';
             const jiraUrl = `${{ secrets.JIRA_BASE_URL }}/browse/${ticketId}`;
-
-            try {
-              // Check if we already commented
-              const comments = await github.rest.issues.listComments({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo
-              });
-
-              const alreadyCommented = comments.data.some(comment =>
-                comment.body.includes(`[${ticketId}]`)
-              );
-
-              if (!alreadyCommented) {
-                const comment = `🎫 **Jira Ticket**: [${ticketId}](${jiraUrl})
-
-This PR is automatically linked to Jira ticket ${ticketId}. Status updates will be synchronized:
-  - 📝 Draft PR → "In Progress"
-  - 🔍 Ready for Review → "In Review"
-  - ✅ Merged → "QA/Done"
-  - ❌ Closed → "To Do"`;
-    
-    await github.rest.issues.createComment({
-    issue_number: context.issue.number,
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    body: comment
-  });
-    
-    console.log('✅ Added Jira link comment to PR');
-  } else {
-    console.log('ℹ️ Jira link comment already exists on PR');
-  }
-  } catch (error) {
-    console.log('⚠️ Could not add PR comment:', error.message);
-    console.log('This is not critical - the Jira integration still works');
-  }
-
-  - name: Summary
-    if: always()
-    run: |
-      TICKET_ID="${{ steps.extract.outputs.ticket_id }}"
-        
-      if [ -z "$TICKET_ID" ]; then
-          echo "ℹ️ No Jira ticket detected in this PR"
-          echo "💡 To enable automation, use branch naming like: feature/KAN-123-description"
-        else
-          echo "✅ Jira integration completed for ticket $TICKET_ID"
-          echo "🔗 View ticket: ${{ secrets.JIRA_BASE_URL }}/browse/$TICKET_ID"
-        fi
+            
+            const comment = `🎫 **Jira Ticket**: [${ticketId}](${jiraUrl})`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
