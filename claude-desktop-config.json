@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "jira-integration": {
+      "command": "node",
+      "args": ["/Users/abdulrahmansaid/StudioProjects/ComposeApp/mcp-jira-server/dist/index.js"],
+      "env": {}
+    }
+  }
+}
