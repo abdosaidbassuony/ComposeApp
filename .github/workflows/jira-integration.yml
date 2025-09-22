@@ -5,6 +5,11 @@ on:
     types: [opened, closed, reopened]
     branches: [main, develop, master]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   update-jira:
     runs-on: ubuntu-latest
@@ -157,20 +162,42 @@ jobs:
           fi
 
       - name: Add PR Comment
-        if: steps.extract.outputs.ticket_id != ''
+        if: steps.extract.outputs.ticket_id != '' && github.event.action == 'opened'
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const ticketId = '${{ steps.extract.outputs.ticket_id }}';
             const jiraUrl = `https://abdo-said.atlassian.net/browse/${ticketId}`;
 
-            const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})
+            try {
+              // Check if we already commented
+              const comments = await github.rest.issues.listComments({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
 
-            This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
+              const alreadyCommented = comments.data.some(comment =>
+                comment.body.includes(`Jira Ticket: [${ticketId}]`)
+              );
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+              if (!alreadyCommented) {
+                const comment = `🔗 **Jira Ticket:** [${ticketId}](${jiraUrl})
+
+This PR is linked to Jira ticket ${ticketId}. Status updates will be synchronized automatically.`;
+
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+                console.log('✅ Added comment to PR');
+              } else {
+                console.log('ℹ️ Comment already exists on PR');
+              }
+            } catch (error) {
+              console.log('⚠️ Could not add PR comment (might need permissions):', error.message);
+              console.log('This is not critical - the Jira integration still works');
+            }
